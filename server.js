@@ -6,7 +6,9 @@ const cors = require("cors");
 const connectDB = require("./utils/dbutils");
 
 const app = express();
-const PORT = 3020;
+
+// ✅ USE RAILWAY PORT
+const PORT = process.env.PORT || 3020;
 
 // middleware
 app.use(express.json());
@@ -35,13 +37,16 @@ app.get("/", (req, res) => {
   res.send("Dashboard Backend Running 🚀");
 });
 
-// start only after DB connects
+// ✅ START SERVER FIRST
+server.listen(PORT, () => {
+  console.log(`🚀 Server running on port ${PORT}`);
+});
+
+// ✅ CONNECT DB SEPARATELY (NON-BLOCKING)
 connectDB()
   .then(() => {
-    server.listen(PORT, () => {
-      console.log(`Server running on http://localhost:${PORT}`);
-    });
+    console.log("✅ Database connected");
   })
   .catch((err) => {
-    console.error("DB connection failed:", err);
+    console.error("❌ DB connection failed:", err.message);
   });
