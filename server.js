@@ -7,7 +7,6 @@ const connectDB = require("./utils/dbutils");
 
 const app = express();
 
-// ✅ USE RAILWAY PORT
 const PORT = process.env.PORT || 3020;
 
 // middleware
@@ -22,10 +21,9 @@ const io = new Server(server, {
   cors: { origin: "*" },
 });
 
-// make io available everywhere
+// this makes io available everywhere
 app.set("io", io);
 
-// socket logic
 require("./sockets/socket")(io);
 
 // routes
@@ -37,12 +35,12 @@ app.get("/", (req, res) => {
   res.send("Dashboard Backend Running 🚀");
 });
 
-// ✅ START SERVER FIRST
+// start server
 server.listen(PORT, () => {
   console.log(`🚀 Server running on port ${PORT}`);
 });
 
-// ✅ CONNECT DB SEPARATELY (NON-BLOCKING)
+// connecting db saperately without blocking
 connectDB()
   .then(() => {
     console.log("✅ Database connected");

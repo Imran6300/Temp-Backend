@@ -9,24 +9,22 @@ exports.receiveTemperature = async (req, res) => {
       return res.status(400).json({ message: "Invalid data" });
     }
 
-    // Save to DB
+    // Save to DB Usong Mongoos Methods
     const record = await Temperature.create({
       deviceId,
       temperature,
       battery,
     });
 
-    // Build LIVE dashboard JSON
     const dashboardData = {
       temperature,
       time: record.createdAt.toLocaleTimeString(),
       online: true,
       battery: battery || 0,
-      tempprediction: temperature + 10, // we'll improve later
-      lastupdate: 0, // 🔥 JUST UPDATED
+      tempprediction: temperature + 10,
+      lastupdate: 0,
     };
 
-    // Emit live update
     req.app.get("io").emit("temperature-update", dashboardData);
 
     res.json({ success: true });

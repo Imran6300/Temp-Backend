@@ -2,7 +2,6 @@ const Temperature = require("../models/temperature.model");
 
 exports.getDashboardData = async (req, res) => {
   try {
-    // get last 5 readings
     const readings = await Temperature.find().sort({ createdAt: -1 }).limit(5);
 
     if (readings.length < 2) {
@@ -25,7 +24,6 @@ exports.getDashboardData = async (req, res) => {
 
     const ratePerMinute = tempDiff / timeDiffMinutes;
 
-    // predict 15 minutes ahead
     const predictedTemp = latest.temperature + ratePerMinute * 15;
 
     res.json({
