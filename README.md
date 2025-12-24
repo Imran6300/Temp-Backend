@@ -88,22 +88,23 @@ This repository contains the backend server for a live temperature monitoring sy
 The project is structured as a standard Node.js/Express application with separation of concerns:
 
 ```
-TempProject
-├── back
-│   ├── controllers
-│   │   ├── dashboard.controller.js  # Handles logic for dashboard data retrieval
-│   │   └── sensor.controller.js     # Handles logic for sensor data ingestion
-│   ├── models
-│   │   └── temperature.model.js     # Mongoose schema for temperature data
-│   ├── node_modules                 # Installed dependencies (git-ignored)
-│   ├── routes
-│   │   ├── dashboard.routes.js      # Routes for dashboard API
-│   │   └── sensor.routes.js         # Routes for sensor data API
-│   ├── sockets
-│   │   └── socket.js                # WebSocket setup and event handlers
-├── package-lock.json                # Lockfile for dependencies
-├── package.json                     # Project metadata and dependencies
-└── server.js                        # Main entry point; sets up Express server, routes, and Socket.IO
+Temp-Backend
+├── controllers
+│   ├── dashboard.controller.js  # Handles logic for dashboard data retrieval
+│   └── sensor.controller.js     # Handles logic for sensor data ingestion
+├── models
+│   └── temperature.model.js     # Mongoose schema for temperature data
+├── routes
+│   ├── dashboard.routes.js      # Routes for dashboard API
+│   └── sensor.routes.js         # Routes for sensor data API
+├── sockets
+│   └── socket.js                # WebSocket setup and event handlers
+├── utils                        # (Currently empty or for future utilities)
+├── .gitignore                   # Ignores node_modules, env files, etc.
+├── README.md                    # Project documentation
+├── package-lock.json            # Lockfile for dependencies
+├── package.json                 # Project metadata and dependencies
+└── server.js                    # Main entry point; sets up Express server, routes, and Socket.IO
 ```
 
 - **controllers/**: Contains business logic for handling requests (e.g., validating input, interacting with models).
