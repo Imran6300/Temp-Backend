@@ -3,6 +3,10 @@ const http = require("http");
 const { Server } = require("socket.io");
 const cors = require("cors");
 
+//importing Routes
+const SensorRoute = require("./routes/sensor.routes");
+const DashboardRoute = require("./routes/dashboard.routes");
+
 const connectDB = require("./utils/dbutils");
 
 const app = express();
@@ -27,8 +31,8 @@ app.set("io", io);
 require("./sockets/socket")(io);
 
 // routes
-app.use("/api/sensor", require("./routes/sensor.routes"));
-app.use("/api/dashboard", require("./routes/dashboard.routes"));
+app.use("/api/sensor", SensorRoute);
+app.use("/api/dashboard", DashboardRoute);
 
 // test route
 app.get("/", (req, res) => {

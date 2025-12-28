@@ -1,4 +1,5 @@
 const Temperature = require("../models/temperature.model");
+const { generateCSV } = require("../utils/report.util");
 
 exports.getDashboardData = async (req, res) => {
   try {
@@ -37,5 +38,32 @@ exports.getDashboardData = async (req, res) => {
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: "Prediction error" });
+  }
+};
+
+exports.downloadReport = async (req, res) => {
+  try {
+    // last 24 hours data
+    const data = await Temperature.find()
+      .sort({ createdAt: -1 })
+      .limit(500)
+      .lean();
+
+    if (!data.length) {
+      return res.status(404).json({ message: "No data available" });
+    }
+
+    const csv = generateCSV(data);
+
+    res.setHeader("Content-Type", "text/csv");
+    res.setHeader(
+      "Content-Disposition",
+      `attachment; filename=temperature-report-${Date.now()}.csv`
+    );
+
+    res.status(200).send(csv);
+  } catch (err) {
+    console.error("Download Report Error:", err);
+    res.status(500).json({ message: "Failed to generate report" });
   }
 };
