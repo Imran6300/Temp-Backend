@@ -1,103 +1,49 @@
 const Temperature = require("../models/temperature.model");
 const { generateCSV } = require("../utils/report.util");
 
-// Simple Linear Regression function (no external library)
-function simpleLinearRegression(points) {
-  // points = [[x1, y1], [x2, y2], ...]  x = minutes since oldest, y = temperature
-  const n = points.length;
-  if (n < 2) return null;
-
-  let sumX = 0,
-    sumY = 0,
-    sumXY = 0,
-    sumX2 = 0;
-
-  for (let [x, y] of points) {
-    sumX += x;
-    sumY += y;
-    sumXY += x * y;
-    sumX2 += x * x;
-  }
-
-  const denominator = n * sumX2 - sumX * sumX;
-  if (denominator === 0) return null;
-
-  const slope = (n * sumXY - sumX * sumY) / denominator;
-  const intercept = (sumY - slope * sumX) / n;
-
-  return { slope, intercept };
-}
-
 exports.getDashboardData = async (req, res) => {
   try {
-    // Get last 30 readings for better prediction (you can change to 20 or 50)
-    const readings = await Temperature.find()
-      .sort({ createdAt: -1 })
-      .limit(30)
-      .select("temperature battery createdAt")
-      .lean();
+    const readings = await Temperature.find().sort({ createdAt: -1 }).limit(5);
 
-    if (readings.length === 0) {
+    if (readings.length < 2) {
       return res.json({
-        temperature: 0,
+        temperature: readings[0]?.temperature || 0,
         time: "--",
-        online: false,
-        battery: 0,
-        tempprediction: 0,
+        online: true,
+        battery: readings[0]?.battery || 0,
+        tempprediction: readings[0]?.temperature || 0,
         lastupdate: 5,
       });
     }
 
     const latest = readings[0];
-    const temperature = latest.temperature;
-    const battery = latest.battery || 0;
-    const time = latest.createdAt.toLocaleTimeString([], {
-      hour: "2-digit",
-      minute: "2-digit",
-      second: "2-digit",
-    });
+    const oldest = readings[readings.length - 1];
 
-    let tempprediction = temperature; // fallback
+    const tempDiff = latest.temperature - oldest.temperature;
 
-    if (readings.length >= 2) {
-      // Use oldest reading as reference time
-      const oldestTime = readings[readings.length - 1].createdAt;
+    const timeDiffMinutes = (latest.createdAt - oldest.createdAt) / (1000 * 60);
 
-      // Build points: chronological order (oldest first)
-      const points = readings
-        .slice()
-        .reverse()
-        .map((r) => {
-          const minutesSinceOldest = (r.createdAt - oldestTime) / (1000 * 60);
-          return [minutesSinceOldest, r.temperature];
-        });
+    const ratePerMinute = tempDiff / timeDiffMinutes;
 
-      const regression = simpleLinearRegression(points);
-      if (regression) {
-        const lastX = points[points.length - 1][0];
-        const forecastMinutes = 15;
-        const predicted =
-          regression.intercept + regression.slope * (lastX + forecastMinutes);
-        tempprediction = Number(predicted.toFixed(1));
-      }
-    }
+    const predictedTemp = latest.temperature + ratePerMinute * 15;
 
     res.json({
-      temperature,
-      time,
+      temperature: latest.temperature,
+      time: latest.createdAt.toLocaleTimeString(),
       online: true,
-      battery,
-      tempprediction,
+      battery: latest.battery || 0,
+      tempprediction: Number(predictedTemp.toFixed(1)),
       lastupdate: 5,
     });
   } catch (err) {
-    console.error("Dashboard Error:", err);
-    res.status(500).json({ message: "Server error" });
+    console.error(err);
+    res.status(500).json({ message: "Prediction error" });
   }
 };
 
 exports.downloadReport = async (req, res) => {
   try {
+    // last 24 hours data
     const data = await Temperature.find()
       .sort({ createdAt: -1 })
       .limit(500)
