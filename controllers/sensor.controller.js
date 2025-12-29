@@ -1,41 +1,35 @@
 const Temperature = require("../models/temperature.model");
-const { predictNext10Min } = require("../utils/predictTemperature");
 
 exports.receiveTemperature = async (req, res) => {
   try {
     const { deviceId, temperature, battery } = req.body;
+    console.log(deviceId, temperature, battery);
 
-    if (!deviceId || typeof temperature !== "number") {
+    if (!deviceId || temperature === undefined) {
       return res.status(400).json({ message: "Invalid data" });
     }
 
-    // Save reading
+    // Save to DB Usong Mongoos Methods
     const record = await Temperature.create({
       deviceId,
       temperature,
       battery,
     });
 
-    // Get recent readings for prediction
-    const recentReadings = await Temperature.find()
-      .sort({ createdAt: -1 })
-      .limit(10);
-
-    const predictedTemp = predictNext10Min(recentReadings);
-
-    // Emit real-time update
-    req.app.get("io").emit("temperature-update", {
+    const dashboardData = {
       temperature,
       time: record.createdAt.toLocaleTimeString(),
       online: true,
       battery: battery || 0,
-      tempprediction: predictedTemp,
+      tempprediction: temperature + 10,
       lastupdate: 0,
-    });
+    };
+
+    req.app.get("io").emit("temperature-update", dashboardData);
 
     res.json({ success: true });
   } catch (err) {
-    console.error("Receive Temperature Error:", err);
+    console.error(err);
     res.status(500).json({ message: "Sensor error" });
   }
 };

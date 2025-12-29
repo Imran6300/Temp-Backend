@@ -1,41 +1,49 @@
 const Temperature = require("../models/temperature.model");
-const { predictNext10Min } = require("../utils/predictTemperature");
 const { generateCSV } = require("../utils/report.util");
 
 exports.getDashboardData = async (req, res) => {
   try {
-    const readings = await Temperature.find().sort({ createdAt: -1 }).limit(10);
+    const readings = await Temperature.find().sort({ createdAt: -1 }).limit(5);
 
-    if (!readings.length) {
+    if (readings.length < 2) {
       return res.json({
-        temperature: 0,
+        temperature: readings[0]?.temperature || 0,
         time: "--",
-        online: false,
-        battery: 0,
-        tempprediction: 0,
-        lastupdate: 10,
+        online: true,
+        battery: readings[0]?.battery || 0,
+        tempprediction: readings[0]?.temperature || 0,
+        lastupdate: 5,
       });
     }
 
     const latest = readings[0];
-    const predictedTemp = predictNext10Min(readings);
+    const oldest = readings[readings.length - 1];
+
+    const tempDiff = latest.temperature - oldest.temperature;
+
+    const timeDiffMinutes = (latest.createdAt - oldest.createdAt) / (1000 * 60);
+
+    const ratePerMinute = tempDiff / timeDiffMinutes;
+
+    const predictedTemp = latest.temperature + ratePerMinute * 15;
 
     res.json({
       temperature: latest.temperature,
       time: latest.createdAt.toLocaleTimeString(),
       online: true,
       battery: latest.battery || 0,
-      tempprediction: predictedTemp,
-      lastupdate: 10,
+      tempprediction: Number(predictedTemp.toFixed(1)),
+      lastupdate: 5,
     });
   } catch (err) {
-    console.error("Dashboard Error:", err);
+    console.error(err);
     res.status(500).json({ message: "Prediction error" });
   }
 };
 
 exports.downloadReport = async (req, res) => {
   try {
+    // last 24 hours data
     const data = await Temperature.find()
       .sort({ createdAt: -1 })
       .limit(500)
