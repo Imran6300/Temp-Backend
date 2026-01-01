@@ -7,11 +7,13 @@ const cors = require("cors");
 const SensorRoute = require("./routes/sensor.routes");
 const DashboardRoute = require("./routes/dashboard.routes");
 
-const connectDB = require("./utils/dbutils");
+const mongoose = require("mongoose");
+
+require("dotenv").config();
+const PORT = process.env.PORT || 5000;
+const DB_PATH = process.env.DB_PATH;
 
 const app = express();
-
-const PORT = process.env.PORT || 3020;
 
 // middleware
 app.use(express.json());
@@ -40,14 +42,15 @@ app.get("/", (req, res) => {
 });
 
 // start server
-server.listen(PORT, () => {
-  console.log(`🚀 Server running on port ${PORT}`);
-});
 
 // connecting db saperately without blocking
-connectDB()
+mongoose
+  .connect(DB_PATH)
   .then(() => {
-    console.log("✅ Database connected");
+    console.log(`🚀 Successfully connected to Db`);
+    server.listen(PORT, () => {
+      console.log(`🚀 Server Is Started`);
+    });
   })
   .catch((err) => {
     console.error("❌ DB connection failed:", err.message);
