@@ -1,47 +1,53 @@
-const express = require("express");
-const http = require("http");
-const { Server } = require("socket.io");
-const cors = require("cors");
-const mongoose = require("mongoose");
+const mqtt = require("mqtt");
+const TemperatureModel = require("../models/temperature.model");
 
-require("dotenv").config();
+const MQTT_BROKER = "mqtts://ea343f92c15b4d419f30142f2702ce2e.s1.eu.hivemq.cloud:8883";
+const MQTT_TOPIC = "tempguard/+/data";
 
-const SensorRoute = require("./routes/sensor.routes");
-const DashboardRoute = require("./routes/dashboard.routes");
+const options = {
+  username: process.env.MQTT_USERNAME,
+  password: process.env.MQTT_PASSWORD,
+  protocol: "mqtts",
+  port: 8883,
+  reconnectPeriod: 5000,
+  rejectUnauthorized: false, // 🔥 VERY IMPORTANT
+};
 
-const app = express();
-const PORT = process.env.PORT || 5000;
-const DB_URI = process.env.DB_URI;
+function initMQTT(io) {
+  console.log("🔌 Connecting to HiveMQ Cloud...");
 
-// middleware
-app.use(express.json());
-app.use(cors());
+  const client = mqtt.connect(MQTT_BROKER, options);
 
-// routes
-app.use("/api/sensor", SensorRoute);
-app.use("/api/dashboard", DashboardRoute);
+  client.on("connect", () => {
+    console.log("✅ MQTT connected");
+    client.subscribe(MQTT_TOPIC, (err) => {
+      if (err) console.error("❌ Subscribe error", err);
+      else console.log("📡 Subscribed to", MQTT_TOPIC);
+    });
+  });
 
-app.get("/", (req, res) => {
-  res.send("Backend running");
-});
+  client.on("message", async (topic, message) => {
+    try {
+      console.log("📥 Raw MQTT:", message.toString());
 
-// create server
-const server = http.createServer(app);
+      const data = JSON.parse(message.toString());
 
-// socket.io
-const io = new Server(server, {
-  cors: { origin: "*" },
-});
-app.set("io", io);
-require("./sockets/socket")(io);
+      const saved = await TemperatureModel.create({
+        deviceId: data.deviceId,
+        temperature: data.temperature,
+        battery: data.battery,
+      });
 
-// ✅ START SERVER FIRST (CRITICAL)
-server.listen(PORT, "0.0.0.0", () => {
-  console.log("🚀 Server listening on port", PORT);
-});
+      console.log("💾 Saved to DB:", saved._id);
+      io.emit("sensor:update", saved);
+    } catch (err) {
+      console.error("❌ MQTT message error:", err.message);
+    }
+  });
 
-// ✅ CONNECT DB SEPARATELY
-mongoose
-  .connect(DB_URI)
-  .then(() => console.log("✅ MongoDB connected"))
-  .catch((err) => console.error("❌ Mongo error:", err.message));
+  client.on("error", (err) => {
+    console.error("❌ MQTT error:", err.message);
+  });
+}
+
+module.exports = initMQTT;
